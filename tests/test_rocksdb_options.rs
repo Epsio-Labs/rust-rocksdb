@@ -423,3 +423,28 @@ fn test_set_write_dbid_to_manifest() {
         String::from_utf8_lossy(&db_checkpoint_id)
     );
 }
+
+#[test]
+fn test_set_callback_logger() {
+    use rocksdb::LogLevel::Debug;
+    use std::sync::atomic::{AtomicI32, Ordering};
+    use std::sync::Arc;
+
+    let path = DBPath::new("_set_callback_logger");
+    let log_count = Arc::new(AtomicI32::new(0));
+    let log_count1 = log_count.clone();
+
+    {
+        let mut opts = Options::default();
+        opts.create_if_missing(true);
+        opts.set_callback_logger(Debug, move |_lvl, _msg| {
+            log_count1.fetch_add(1, Ordering::Relaxed);
+        });
+        let _db = DB::open(&opts, &path).unwrap();
+    }
+
+    assert!(
+        log_count.load(Ordering::Relaxed) > 0,
+        "callback logger produced no messages!"
+    );
+}

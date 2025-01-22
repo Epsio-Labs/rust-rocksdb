@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::any::Any;
 use std::ffi::CStr;
+use std::panic::{catch_unwind, RefUnwindSafe};
 use std::path::Path;
+use std::pin::Pin;
 use std::ptr::{null_mut, NonNull};
 use std::slice;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use libc::{self, c_char, c_double, c_int, c_uchar, c_uint, c_void, size_t};
@@ -234,6 +238,7 @@ pub(crate) struct OptionsMustOutliveDB {
     blob_cache: Option<Cache>,
     block_based: Option<BlockBasedOptionsMustOutliveDB>,
     write_buffer_manager: Option<WriteBufferManager>,
+    callback_logger: Option<CallbackLoggerOutliveDB>,
 }
 
 impl OptionsMustOutliveDB {
@@ -247,6 +252,7 @@ impl OptionsMustOutliveDB {
                 .as_ref()
                 .map(BlockBasedOptionsMustOutliveDB::clone),
             write_buffer_manager: self.write_buffer_manager.clone(),
+            callback_logger: self.callback_logger.clone(),
         }
     }
 }
@@ -262,6 +268,11 @@ impl BlockBasedOptionsMustOutliveDB {
             block_cache: self.block_cache.clone(),
         }
     }
+}
+
+#[derive(Clone)]
+struct CallbackLoggerOutliveDB {
+    inner: Arc<Pin<Box<dyn Any>>>,
 }
 
 /// Database-wide options around performance and behavior.
@@ -929,6 +940,22 @@ pub enum LogLevel {
     Error,
     Fatal,
     Header,
+}
+
+impl FromStr for LogLevel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "debug" | "DEBUG" => Ok(LogLevel::Debug),
+            "info" | "INFO" => Ok(LogLevel::Info),
+            "warn" | "WARN" => Ok(LogLevel::Warn),
+            "error" | "ERROR" => Ok(LogLevel::Error),
+            "fatal" | "FATAL" => Ok(LogLevel::Fatal),
+            "header" | "HEADER" => Ok(LogLevel::Header),
+            _ => Err(()),
+        }
+    }
 }
 
 impl Options {
@@ -3314,6 +3341,64 @@ impl Options {
     pub fn set_recycle_log_file_num(&mut self, num: usize) {
         unsafe {
             ffi::rocksdb_options_set_recycle_log_file_num(self.inner, num);
+        }
+    }
+
+    /// Invokes callback with log messages.
+    /// The callback should be a static function and is invoked with an additional
+    /// "context" strings supplied by the caller.
+    ///
+    /// # Examples
+    /// ```
+    /// use rocksdb::{LogLevel, Options};
+    /// fn logger_callback(level: LogLevel, msg: &str, context: &Vec<String>) {
+    ///     println!("{:?} [{:?}]: {}", context[0], level, msg);
+    /// }
+    ///
+    /// let mut options = Options::default();
+    /// let context = "Some Context".to_string();
+    /// options.set_callback_logger(LogLevel::Debug, move |level, msg| {
+    ///     println!("{} [{:?}]: {}", context, level, msg);
+    /// });
+    /// ```
+    pub fn set_callback_logger<F>(&mut self, log_level: LogLevel, func: F)
+    where
+        F: Fn(LogLevel, &str) + Send + Sync + RefUnwindSafe + 'static,
+    {
+        let logger_outlive = CallbackLoggerOutliveDB {
+            inner: Arc::new(Box::pin(func)),
+        };
+        let logger_ptr: *const Pin<Box<dyn Any>> = &*logger_outlive.inner;
+        unsafe {
+            let logger = ffi::rocksdb_logger_create_callback_logger(
+                log_level as c_int,
+                Some(Self::logger_callback::<F>),
+                logger_ptr.cast::<c_void>().cast_mut(),
+            );
+            ffi::rocksdb_options_set_info_log(self.inner, logger);
+        }
+
+        self.outlive.callback_logger = Some(logger_outlive);
+    }
+
+    extern "C" fn logger_callback<F>(func: *mut c_void, level: u32, msg: *mut c_char, len: usize)
+    where
+        F: Fn(LogLevel, &str) + Send + Sync + RefUnwindSafe + 'static,
+    {
+        use std::{mem, process, str};
+
+        let level = unsafe { mem::transmute::<u32, LogLevel>(level) };
+        let slice = unsafe { slice::from_raw_parts_mut(msg.cast::<u8>(), len) };
+        let msg = unsafe { str::from_utf8_unchecked(slice) };
+        let func_any = unsafe { &*func.cast::<Box<dyn Any>>() };
+
+        if let Some(func) = &func_any.downcast_ref::<F>() {
+            let result = catch_unwind(move || {
+                func(level, msg);
+            });
+            if result.is_err() {
+                process::abort();
+            }
         }
     }
 
