@@ -40,6 +40,9 @@ use crate::{
     ColumnFamilyDescriptor, Error, SnapshotWithThreadMode,
 };
 
+#[cfg(feature = "extras")]
+use crate::extras_ffi;
+
 pub(crate) struct WriteBufferManagerWrapper {
     pub(crate) inner: NonNull<ffi::rocksdb_write_buffer_manager_t>,
 }
@@ -113,6 +116,14 @@ impl WriteBufferManager {
     /// Returns the WriteBufferManager memory usage in bytes.
     pub fn get_usage(&self) -> usize {
         unsafe { ffi::rocksdb_write_buffer_manager_memory_usage(self.0.inner.as_ptr()) }
+    }
+
+    /// Returns the total memory used by active memtables.
+    #[cfg(feature = "extras")]
+    pub fn get_mutable_usage(&self) -> usize {
+        unsafe {
+            ffi::rocksdb_write_buffer_manager_mutable_memtable_memory_usage(self.0.inner.as_ptr())
+        }
     }
 
     /// Returns the current buffer size in bytes.
@@ -3630,6 +3641,26 @@ impl FlushOptions {
             ffi::rocksdb_flushoptions_set_wait(self.inner, c_uchar::from(wait));
         }
     }
+
+    #[cfg(feature = "extras")]
+    pub(crate) fn get_wait(&self) -> bool {
+        unsafe { ffi::rocksdb_flushoptions_get_wait(self.inner) != 0 }
+    }
+
+    #[cfg(feature = "extras")]
+    pub fn set_allow_write_stall(&mut self, allow_write_stall: bool) {
+        unsafe {
+            extras_ffi::rocksdb_extras_flushoptions_set_allow_write_stall(
+                self.inner,
+                allow_write_stall,
+            );
+        }
+    }
+
+    #[cfg(feature = "extras")]
+    pub(crate) fn get_allow_write_stall(&self) -> bool {
+        unsafe { extras_ffi::rocksdb_extras_flushoptions_get_allow_write_stall(self.inner) }
+    }
 }
 
 impl Default for FlushOptions {
@@ -4534,6 +4565,21 @@ impl CompactOptions {
         unsafe {
             ffi::rocksdb_compactoptions_set_target_level(self.inner, lvl);
         }
+    }
+
+    #[cfg(feature = "extras")]
+    pub fn set_max_subcompactions(&mut self, max_subcompactions: u32) {
+        unsafe {
+            extras_ffi::rocksdb_extras_compactoptions_set_max_subcompactions(
+                self.inner,
+                max_subcompactions,
+            );
+        }
+    }
+
+    #[cfg(feature = "extras")]
+    pub(crate) fn get_target_level(&self) -> i32 {
+        unsafe { extras_ffi::rocksdb_extras_compactoptions_get_target_level(self.inner) }
     }
 
     /// Set user-defined timestamp low bound, the data with older timestamp than

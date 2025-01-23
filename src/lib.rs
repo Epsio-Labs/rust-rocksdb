@@ -106,6 +106,11 @@ pub mod statistics;
 mod transactions;
 mod write_batch;
 
+#[cfg(feature = "extras")]
+mod extras;
+#[cfg(feature = "extras")]
+pub use crate::{extras::ffi as extras_ffi, extras_ffi::verify_extras_safety_once};
+
 pub use crate::{
     column_family::{
         AsColumnFamilyRef, BoundColumnFamily, ColumnFamily, ColumnFamilyDescriptor,
