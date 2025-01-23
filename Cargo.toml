@@ -14,6 +14,7 @@ categories = ["database"]
 keywords = ["database", "embedded", "LSM-tree", "persistence"]
 homepage = "https://github.com/rust-rocksdb/rust-rocksdb"
 exclude = [".gitignore", ".travis.yml", "deploy.sh", "test/**/*"]
+build = "src/extras/build.rs"
 
 [workspace]
 members = ["librocksdb-sys"]
@@ -35,6 +36,7 @@ serde1 = ["serde"]
 bindgen-runtime = ["librocksdb-sys/bindgen-runtime"]
 bindgen-static = ["librocksdb-sys/bindgen-static"]
 lto = ["librocksdb-sys/lto"]
+extras = []
 
 [dependencies]
 libc = "0.2"
@@ -42,6 +44,9 @@ librocksdb-sys = { path = "librocksdb-sys", version = "0.17.1", default-features
     "static",
 ] }
 serde = { version = "1", features = ["derive"], optional = true }
+
+[build-dependencies]
+cc = "1.1.37"
 
 [dev-dependencies]
 trybuild = "1"
