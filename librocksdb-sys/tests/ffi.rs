@@ -47,7 +47,7 @@ macro_rules! cstrp {
     }};
 }
 
-static mut phase: &'static str = "";
+static mut phase: &str = "";
 // static mut dbname: *mut c_uchar = ptr::null_mut();
 // static mut dbbackupname: *mut c_uchar = ptr::null_mut();
 
@@ -67,7 +67,7 @@ fn GetTempDir() -> PathBuf {
     option_env!("TEST_TMPDIR")
         .filter(|s| !s.is_empty())
         .map(PathBuf::from)
-        .unwrap_or_else(|| env::temp_dir())
+        .unwrap_or_else(env::temp_dir)
 }
 
 unsafe fn StartPhase(name: &'static str) {
@@ -94,15 +94,9 @@ macro_rules! CheckCondition {
 unsafe fn CheckEqual(expected: *const c_char, actual: *const c_char, n: size_t) {
     let is_equal = if expected.is_null() && actual.is_null() {
         true
-    } else if !expected.is_null()
+    } else { !expected.is_null()
         && !actual.is_null()
-        && n == strlen(expected)
-        && memcmp(expected as *const c_void, actual as *const c_void, n) == 0
-    {
-        true
-    } else {
-        false
-    };
+        && n == strlen(expected) && memcmp(expected as *const c_void, actual as *const c_void, n) == 0 };
 
     if !is_equal {
         panic!(
@@ -790,7 +784,7 @@ fn ffi() {
             fake_filter_result = 1;
             CheckGet(db, roptions, cstrp!("foo"), cstrp!("foovalue"));
             CheckGet(db, roptions, cstrp!("bar"), cstrp!("barvalue"));
-            if phase == "" {
+            if phase.is_empty() {
                 // Must not find value when custom filter returns false
                 fake_filter_result = 0;
                 CheckGet(db, roptions, cstrp!("foo"), ptr::null());
