@@ -1821,6 +1821,12 @@ impl Options {
         }
     }
 
+    pub fn set_disable_sync(&mut self, disable: bool) {
+        unsafe {
+            ffi::rocksdb_options_set_disable_sync(self.inner, c_int::from(disable));
+        }
+    }
+
     /// Specifies the absolute info LOG dir.
     ///
     /// If it is empty, the log files will be in the same dir as data.
