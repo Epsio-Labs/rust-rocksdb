@@ -2,7 +2,7 @@ use std::{ffi::c_int, sync::Once};
 
 use crate::CompactOptions;
 use crate::{
-    ffi::{rocksdb_compactoptions_t, rocksdb_flushoptions_t},
+    ffi::{rocksdb_compactoptions_t, rocksdb_flushoptions_t, rocksdb_options_t},
     FlushOptions,
 };
 
@@ -22,6 +22,11 @@ extern "C" {
     pub(crate) fn rocksdb_extras_flushoptions_get_allow_write_stall(
         flush_options_ptr: *const rocksdb_flushoptions_t,
     ) -> bool;
+
+    pub(crate) fn rocksdb_extras_options_set_avoid_flush_during_shutdown(
+        opt: *mut rocksdb_options_t,
+        val: u8,
+    );
 }
 
 static VERIFY_SAFETY: Once = Once::new();

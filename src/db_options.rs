@@ -3688,6 +3688,16 @@ impl Options {
         let val_u8 = unsafe { ffi::rocksdb_options_get_write_dbid_to_manifest(self.inner) };
         val_u8 != 0
     }
+
+    #[cfg(feature = "extras")]
+    pub fn set_avoid_flush_during_shutdown(&mut self, avoid_flush_during_shutdown: bool) {
+        unsafe {
+            extras_ffi::rocksdb_extras_options_set_avoid_flush_during_shutdown(
+                self.inner,
+                c_uchar::from(avoid_flush_during_shutdown),
+            );
+        }
+    }
 }
 
 impl Default for Options {
