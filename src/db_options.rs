@@ -1821,6 +1821,12 @@ impl Options {
         }
     }
 
+    /// Returns the value of the `use_fsync` option.
+    pub fn get_use_fsync(&self) -> bool {
+        let val = unsafe { ffi::rocksdb_options_get_use_fsync(self.inner) };
+        val != 0
+    }
+
     /// Specifies the absolute info LOG dir.
     ///
     /// If it is empty, the log files will be in the same dir as data.
@@ -4099,10 +4105,12 @@ impl ReadOptions {
     }
 
     /// If true, keys deleted using the DeleteRange() API will be visible to
-    /// readers until they are naturally deleted during compaction. This improves
-    /// read performance in DBs with many range deletions.
+    /// readers until they are naturally deleted during compaction.
     ///
     /// Default: false
+    #[deprecated(
+        note = "deprecated in RocksDB 10.2.1: no performance impact if DeleteRange is not used"
+    )]
     pub fn set_ignore_range_deletions(&mut self, v: bool) {
         unsafe {
             ffi::rocksdb_readoptions_set_ignore_range_deletions(self.inner, c_uchar::from(v));
@@ -4812,6 +4820,14 @@ mod tests {
             height: 4,
             branching_factor: 4,
         });
+    }
+
+    #[test]
+    fn test_use_fsync() {
+        let mut opts = Options::default();
+        assert!(!opts.get_use_fsync());
+        opts.set_use_fsync(true);
+        assert!(opts.get_use_fsync());
     }
 
     #[test]

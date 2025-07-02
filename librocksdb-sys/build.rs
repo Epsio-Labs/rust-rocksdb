@@ -1,6 +1,11 @@
 use std::path::Path;
 use std::{env, fs, path::PathBuf, process::Command};
 
+// On these platforms jemalloc-sys will use a prefixed jemalloc which cannot be linked together
+// with RocksDB.
+// See https://github.com/tikv/jemallocator/blob/tikv-jemalloc-sys-0.5.3/jemalloc-sys/src/env.rs#L25
+const NO_JEMALLOC_TARGETS: &[&str] = &["android", "dragonfly", "musl", "darwin"];
+
 fn link(name: &str, bundled: bool) {
     use std::env::var;
     let target = var("TARGET").unwrap();
@@ -166,6 +171,10 @@ fn build_rocksdb() {
         if &target == "armv7-linux-androideabi" {
             config.define("_FILE_OFFSET_BITS", Some("32"));
         }
+    } else if target.contains("aix") {
+        config.define("OS_AIX", None);
+        config.define("ROCKSDB_PLATFORM_POSIX", None);
+        config.define("ROCKSDB_LIB_IO_POSIX", None);
     } else if target.contains("linux") {
         config.define("OS_LINUX", None);
         config.define("ROCKSDB_PLATFORM_POSIX", None);
@@ -238,8 +247,12 @@ fn build_rocksdb() {
 
     config.define("ROCKSDB_SUPPORT_THREAD_LOCAL", None);
 
-    if cfg!(feature = "jemalloc") {
-        config.define("WITH_JEMALLOC", "ON");
+    if cfg!(feature = "jemalloc") && NO_JEMALLOC_TARGETS.iter().all(|i| !target.contains(i)) {
+        config.define("ROCKSDB_JEMALLOC", Some("1"));
+        config.define("JEMALLOC_NO_DEMANGLE", Some("1"));
+        if let Some(jemalloc_root) = env::var_os("DEP_JEMALLOC_ROOT") {
+            config.include(Path::new(&jemalloc_root).join("include"));
+        }
     }
 
     #[cfg(feature = "io-uring")]
@@ -287,6 +300,12 @@ fn build_rocksdb() {
 
     config.cpp(true);
     config.flag_if_supported("-std=c++17");
+    if target.contains("linux") {
+        config.cpp_link_stdlib("stdc++");
+    } else if !target.contains("windows") {
+        config.cpp_link_stdlib("c++");
+    }
+    config.flag("-include").flag("cstdint");
     config.compile("librocksdb.a");
 }
 
@@ -399,13 +418,6 @@ fn main() {
         println!("cargo:rerun-if-changed=rocksdb/");
         fail_on_empty_directory("rocksdb");
         build_rocksdb();
-    } else {
-        // according to https://github.com/alexcrichton/cc-rs/blob/master/src/lib.rs#L2189
-        if target.contains("apple") || target.contains("freebsd") || target.contains("openbsd") {
-            println!("cargo:rustc-link-lib=dylib=c++");
-        } else if target.contains("linux") {
-            println!("cargo:rustc-link-lib=dylib=stdc++");
-        }
     }
     if cfg!(feature = "snappy") && !try_to_find_and_link_lib("SNAPPY") {
         println!("cargo:rerun-if-changed=snappy/");

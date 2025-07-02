@@ -2,7 +2,7 @@
 
 [![RocksDB build](https://github.com/rust-rocksdb/rust-rocksdb/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/rust-rocksdb/rust-rocksdb/actions/workflows/rust.yml)
 [![crates.io](https://img.shields.io/crates/v/rocksdb.svg)](https://crates.io/crates/rocksdb)
-[![documentation](https://docs.rs/rocksdb/badge.svg)](https://docs.rs/rocksdb)
+[![documentation](https://img.shields.io/docsrs/rocksdb/latest)](https://docs.rs/rocksdb)
 [![license](https://img.shields.io/crates/l/rocksdb.svg)](https://github.com/rust-rocksdb/rust-rocksdb/blob/master/LICENSE)
 [![Gitter chat](https://badges.gitter.im/rust-rocksdb/gitter.svg)](https://gitter.im/rust-rocksdb/lobby)
 ![rust 1.71.1 required](https://img.shields.io/badge/rust-1.71.1-blue.svg?label=MSRV)
@@ -15,7 +15,7 @@
 
 ## Contributing
 
-Feedback and pull requests welcome! If a particular feature of RocksDB is
+Feedback and pull requests are welcome! If a particular feature of RocksDB is
 important to you, please let me know by opening an issue, and I'll
 prioritize it.
 
@@ -76,7 +76,7 @@ default-features = false
 features = ["bindgen-static", "snappy", "lz4", "zstd", "zlib", "bzip2"]
 ```
 
-Notice that `runtime` and `static` features are mutually exclusive, and won't compile if both enabled.
+Notice that `runtime` and `static` features are mutually exclusive, and won't compile if both are enabled.
 
 ## LTO
 Enable the `lto` feature to enable link-time optimization. It will compile rocksdb with `-flto` flag. This feature is disabled by default.
