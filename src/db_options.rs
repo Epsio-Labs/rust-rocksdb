@@ -32,6 +32,7 @@ use crate::{
     comparator::{
         ComparatorCallback, ComparatorWithTsCallback, CompareFn, CompareTsFn, CompareWithoutTsFn,
     },
+    custom_cache::CustomCache,
     db::DBAccess,
     env::Env,
     ffi,
@@ -260,12 +261,14 @@ impl OptionsMustOutliveDB {
 #[derive(Default)]
 struct BlockBasedOptionsMustOutliveDB {
     block_cache: Option<Cache>,
+    custom_cache: Option<CustomCache>,
 }
 
 impl BlockBasedOptionsMustOutliveDB {
     fn clone(&self) -> Self {
         Self {
             block_cache: self.block_cache.clone(),
+            custom_cache: self.custom_cache.clone(),
         }
     }
 }
@@ -587,6 +590,13 @@ impl BlockBasedOptions {
             ffi::rocksdb_block_based_options_set_block_cache(self.inner, cache.0.inner.as_ptr());
         }
         self.outlive.block_cache = Some(cache.clone());
+    }
+
+    pub fn set_custom_cache(&mut self, cache: &CustomCache) {
+        unsafe {
+            ffi::rocksdb_block_based_options_set_custom_cache(self.inner, cache.0.inner.as_ptr());
+        }
+        self.outlive.custom_cache = Some(cache.clone());
     }
 
     /// Disable block cache

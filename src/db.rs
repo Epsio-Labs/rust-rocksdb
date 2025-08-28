@@ -821,8 +821,7 @@ impl<T: ThreadMode> DBWithThreadMode<T> {
             ffi_try!(ffi::rocksdb_truncate(self.inner.inner, 0));
             Ok(())
         }
-        }
-
+    }
 
     /// Removes the database entries in the range `["from", "to")` using given write options.
     pub fn delete_range_cf_opt<K: AsRef<[u8]>>(

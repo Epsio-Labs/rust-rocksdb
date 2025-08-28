@@ -89,6 +89,7 @@ mod column_family;
 pub mod compaction_filter;
 pub mod compaction_filter_factory;
 mod comparator;
+pub mod custom_cache;
 mod db;
 mod db_iterator;
 mod db_options;
@@ -117,6 +118,7 @@ pub use crate::{
         ColumnFamilyRef, ColumnFamilyTtl, DEFAULT_COLUMN_FAMILY_NAME,
     },
     compaction_filter::Decision as CompactionDecision,
+    custom_cache::{CustomCache, CustomCacheCallback},
     db::{
         DBAccess, DBCommon, DBWithThreadMode, LiveFile, MultiThreaded, Range, SingleThreaded,
         ThreadMode, DB,
