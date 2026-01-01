@@ -596,6 +596,12 @@ impl BlockBasedOptions {
         }
     }
 
+    pub fn set_cache_index_and_filter_blocks_with_high_priority(&mut self, should: bool) {
+        unsafe {
+            ffi::rocksdb_block_based_options_set_cache_index_and_filter_blocks_with_high_priority(self.inner, c_uchar::from(should));
+        }
+    }
+
     /// Sets a [Bloom filter](https://github.com/facebook/rocksdb/wiki/RocksDB-Bloom-Filter)
     /// policy to reduce disk reads.
     ///
